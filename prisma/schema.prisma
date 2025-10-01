@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+enum Role {
+  VISITOR
+  COLLABORATOR
+  ADMIN
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  name       String
+  last_name      String
+  email      String    @unique
+  password_hash  String
+  department    String
+  phone          String?
+  company_history String? 
+  profile_image  String?
+  role       Role      @default(COLLABORATOR)
+  points     Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  // Relações
+  comments   Comment[]
+  events     Event[]   @relation("EventOrganizer")
+  likes      Like[]
+  announcements Announcement[] @relation("AnnouncementAuthor")
+  news           News[]          // relação com News
+  registrations  Registration[]  // relação com Registration
+  favoriteLinks  FavoriteLink[]  // relação com FavoriteLink
+}
+
+model News {
+  id          Int       @id @default(autoincrement())
+  title       String
+  content     String
+  author      User      @relation(fields: [authorId], references: [id])
+  authorId    Int
+  image      String?
+  createdAt   DateTime  @default(now())
+  comments    Comment[]
+  likes       Like[]
+}
+
+model Announcement {
+  id         Int       @id @default(autoincrement())
+  title      String
+  content    String
+  importance String
+  author     User      @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  authorId   Int
+  createdAt  DateTime  @default(now())
+}
+
+model Event {
+  id           Int       @id @default(autoincrement())
+  title        String
+  description  String
+  location     String
+  start_date  DateTime @db.Timestamptz
+  end_date    DateTime? @db.Timestamptz
+  image       String?
+  organizer    User      @relation("EventOrganizer", fields: [organizerId], references: [id])
+  organizerId  Int
+  createdAt    DateTime  @default(now())
+  registrations Registration[]
+}
+
+model Registration {
+  registrationId    Int
+  eventId   Int
+
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  event     Event    @relation(fields: [eventId], references: [id])
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+
+  @@id([eventId, registrationId]) // chave primária composta
+}
+
+model Comment {
+  newsId        Int
+  commentNumber Int // ID local do comentário na notícia
+
+  text      String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  news      News     @relation(fields: [newsId], references: [id])
+  createdAt DateTime @default(now())
+  likes     Like[]
+
+  @@id([newsId, commentNumber]) // chave primária composta
+}
+
+model Like {
+  id            Int      @id @default(autoincrement())
+  user          User     @relation(fields: [userId], references: [id])
+  userId        Int
+
+  // Like em notícia
+  news          News?    @relation(fields: [newsId], references: [id])
+  newsId        Int?
+
+  // Like em comentário (precisa da PK composta do Comment)
+  comment       Comment? @relation(fields: [commentNewsId, commentNumber], references: [newsId, commentNumber])
+  commentNewsId Int?
+  commentNumber Int?
+
+  createdAt     DateTime @default(now())
+}
+
+model FavoriteLink {
+  id        Int      @id @default(autoincrement())
+  title     String
+  url       String
+  description String
+  category  String?
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt DateTime @default(now())
+}
+
+// **Placeholder para integração futura de salas**  
+// Vamos consumir a API PHP de agendamento → não precisa de model aqui por enquanto.
