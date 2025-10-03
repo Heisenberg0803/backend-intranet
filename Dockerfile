@@ -19,3 +19,4 @@ COPY --from=builder /app ./
 
 # aplica migrations no start
 CMD npx prisma migrate deploy && npm run start
+    
